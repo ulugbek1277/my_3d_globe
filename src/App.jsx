@@ -6,7 +6,7 @@ import './App.css';
 
 const COUNT = 12000;
 
-// --- MATNNI HISOBLASH (ZICHLIK YUQORI) ---
+// --- MATNNI HISOBLASH ---
 const createTextPoints = (text) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -225,21 +225,27 @@ export default function App() {
 
   useEffect(() => {
     if (handsRef.current) return;
+
+    // Kutubxona yuklanishini kutish
     if (typeof window.Hands === 'undefined') {
-      setCameraStatus('Kutubxona yuklanmadi. Sahifani yangilang.');
+      setCameraStatus('Kutubxona yuklanmoqda...');
+      const checkInterval = setInterval(() => {
+        if (typeof window.Hands !== 'undefined') {
+           clearInterval(checkInterval);
+           window.location.reload(); // Agar juda kech yuklansa, sahifani yangilash
+        }
+      }, 1000);
       return;
     }
 
     const initCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { width: 640, height: 480, facingMode: 'user' } 
-        });
-        stream.getTracks().forEach(track => track.stop());
-
-        // MUHIM: Versiyani aniq ko'rsatamiz
+        // --- O'ZGARISH SHU YERDA ---
         handsRef.current = new window.Hands({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`
+          locateFile: (file) => {
+            // Index.html dagi versiya bilan AYNAN BIR XIL bo'lishi SHART:
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`;
+          }
         });
         
         handsRef.current.setOptions({ 
@@ -278,6 +284,12 @@ export default function App() {
           }
         });
 
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: 640, height: 480, facingMode: 'user' } 
+        });
+        // Streamni to'xtatamiz, chunki Camera util o'zi boshqaradi
+        stream.getTracks().forEach(track => track.stop());
+
         if (videoRef.current) {
           cameraRef.current = new window.Camera(videoRef.current, {
             onFrame: async () => {
@@ -290,9 +302,11 @@ export default function App() {
           cameraRef.current.start();
         }
       } catch (err) {
-        setCameraStatus('Kameraga ruxsat berilmadi - Sichqonchadan foydalaning');
+        console.error(err);
+        setCameraStatus('Xatolik: ' + err.message);
       }
     };
+    
     initCamera();
   }, []);
 
